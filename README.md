@@ -1,21 +1,20 @@
 # ⚙️ Trading Signal Backend (FastAPI)
 
-Backend-сервер для мониторинга акций, генерации торговых сигналов и взаимодействия с мобильным приложением.
+This backend server monitors stock tickers, generates AI-based trading signals, and communicates with a mobile Flutter client.
 
-## 📦 Стек технологий
+## 🔧 Tech Stack
 
-- **FastAPI** — быстрый, асинхронный веб-фреймворк на Python
-- **yFinance** — для получения данных по тикерам
-- **SQLite** — для хранения истории сигналов
-- **CORS Middleware** — для связи с Flutter
-- **threading** — асинхронный мониторинг тикеров
+- **FastAPI** – modern async Python web framework
+- **yFinance** – for fetching real-time market data
+- **SQLite** – for storing signal history
+- **CORS Middleware** – enables frontend-backend connection
+- **Threading** – for background monitoring
 
-## 🚀 Запуск
+## 🚀 Getting Started
 
-1. Создайте виртуальное окружение:
+1. Create a virtual environment:
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-
 ```
