@@ -8,19 +8,19 @@ router = APIRouter(prefix="/signals", tags=["signals"])
 
 
 @router.get("", response_model=List[dict])
-def get_signals():
+async def get_signals():
     """Получить все активные сигналы"""
     return repository.get_signals()
 
 
 @router.get("/{ticker}", response_model=List[dict])
-def get_signals_by_ticker(ticker: str):
+async def get_signals_by_ticker(ticker: str):
     """Получить все сигналы по тикеру"""
     return repository.get_signals_by_ticker(ticker.upper())
 
 
 @router.post("/confirm")
-def confirm_signal(confirmation: SignalConfirmation):
+async def confirm_signal(confirmation: SignalConfirmation):
     """Подтвердить или отклонить сигнал"""
     signal_id = confirmation.signal_id
     action = confirmation.action
@@ -73,6 +73,15 @@ def confirm_signal(confirmation: SignalConfirmation):
 
 
 @router.get("/history", response_model=List[dict])
-def get_signal_history():
+async def get_signal_history():
     """Получить историю всех сигналов"""
-    return repository.get_signal_history() 
+    # Обновленная логика: возвращаем историю сигналов из репозитория
+    # Если история пуста, но есть активные сигналы, добавляем их в историю
+    signal_history = repository.get_signal_history()
+    
+    # Если история пуста, но есть активные сигналы, добавляем их в историю
+    if not signal_history:
+        active_signals = repository.get_signals()
+        signal_history = active_signals  # Используем активные сигналы как историю
+    
+    return signal_history 

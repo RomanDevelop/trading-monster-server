@@ -7,7 +7,7 @@ router = APIRouter(prefix="/tickers", tags=["tickers"])
 
 
 @router.post("")
-def monitor_ticker(request: TickerRequest):
+async def monitor_ticker(request: TickerRequest):
     """Добавить тикер в список наблюдения"""
     ticker = request.ticker.upper()
     if not ticker:
@@ -18,7 +18,7 @@ def monitor_ticker(request: TickerRequest):
 
 
 @router.delete("/{ticker}")
-def remove_ticker(ticker: str):
+async def remove_ticker(ticker: str):
     """Удалить тикер из списка наблюдения"""
     ticker = ticker.upper()
     if repository.remove_ticker(ticker):
@@ -28,6 +28,6 @@ def remove_ticker(ticker: str):
 
 
 @router.get("", response_model=List[str])
-def get_watchlist():
+async def get_watchlist():
     """Получить список всех отслеживаемых тикеров"""
     return repository.get_watchlist() 

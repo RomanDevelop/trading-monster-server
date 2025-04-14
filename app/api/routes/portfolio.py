@@ -8,13 +8,13 @@ router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 
 @router.get("/balance")
-def get_balance():
+async def get_balance():
     """Получить текущий баланс"""
     return {"balance": repository.get_balance()}
 
 
 @router.get("/positions")
-def get_positions():
+async def get_positions():
     """Получить список открытых позиций"""
     return {
         "positions": repository.get_positions(),
@@ -23,13 +23,13 @@ def get_positions():
 
 
 @router.get("/positions/history")
-def get_position_history():
+async def get_position_history():
     """Получить историю позиций"""
     return repository.get_position_history()
 
 
 @router.post("/positions/close/{ticker}")
-def close_position(ticker: str, position_close: PositionClose):
+async def close_position(ticker: str, position_close: PositionClose):
     """Закрыть позицию"""
     success, message, closed_position = portfolio_manager.close_position(
         ticker=ticker.upper(),
@@ -48,7 +48,7 @@ def close_position(ticker: str, position_close: PositionClose):
 
 
 @router.post("/reset")
-def reset_portfolio():
+async def reset_portfolio():
     """Сбросить портфель к начальному состоянию"""
     success, message, data = portfolio_manager.reset_portfolio()
     
