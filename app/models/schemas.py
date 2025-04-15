@@ -1,16 +1,21 @@
 from pydantic import BaseModel
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Literal
 from datetime import datetime
+
+
+# Definition of possible analysis model types
+AnalysisModelType = Literal["RSI_MODEL", "MACD_MODEL", "BOLLINGER_MODEL"]
 
 
 class TickerRequest(BaseModel):
     ticker: str
+    model_type: AnalysisModelType = "RSI_MODEL"  # Using RSI model by default
 
 
 class SignalResponse(BaseModel):
-    id: str  # Уникальный ID сигнала
+    id: str  # Unique signal ID
     ticker: str
-    signal: str  # "long" или "short"
+    signal: str  # "long" or "short"
     message: str
     open: float
     close: float
@@ -18,17 +23,18 @@ class SignalResponse(BaseModel):
     eps_growth: float
     timestamp: str
     status: str = "pending"  # "pending", "confirmed", "rejected"
+    model_type: AnalysisModelType  # Type of model that generated the signal
 
 
 class SignalConfirmation(BaseModel):
     signal_id: str
-    action: str  # "confirm" или "reject"
+    action: str  # "confirm" or "reject"
     quantity: Optional[float] = None
 
 
 class PositionOpen(BaseModel):
     ticker: str
-    signal_type: str  # "long" или "short"
+    signal_type: str  # "long" or "short"
     price: float
     quantity: float
 
@@ -43,7 +49,7 @@ class PortfolioStatus(BaseModel):
 
 
 class Signal(BaseModel):
-    """Модель сигнала для внутреннего использования"""
+    """Signal model for internal use"""
     id: str
     ticker: str
     signal: str
@@ -55,6 +61,7 @@ class Signal(BaseModel):
     timestamp: str
     status: str = "pending"
     quantity: Optional[float] = None
+    model_type: AnalysisModelType  # Type of model that generated the signal
 
     def to_dict(self) -> dict:
         return self.dict()
@@ -65,7 +72,7 @@ class Signal(BaseModel):
 
 
 class Position(BaseModel):
-    """Модель позиции для внутреннего использования"""
+    """Position model for internal use"""
     ticker: str
     signal_type: str
     price: float
@@ -76,10 +83,24 @@ class Position(BaseModel):
     status: str = "open"
     close_price: Optional[float] = None
     close_timestamp: Optional[str] = None
+    model_type: AnalysisModelType  # Type of model that was used to open the position
 
     def to_dict(self) -> dict:
         return self.dict()
 
     @classmethod
     def from_dict(cls, data: dict) -> "Position":
+        return cls(**data)
+
+
+class WatchlistItem(BaseModel):
+    """Watchlist item with analysis model type"""
+    ticker: str
+    model_type: AnalysisModelType
+
+    def to_dict(self) -> dict:
+        return self.dict()
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "WatchlistItem":
         return cls(**data) 

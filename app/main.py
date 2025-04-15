@@ -7,18 +7,18 @@ from app.core.config import settings
 from app.services.monitoring import monitoring_service
 from app.db import repository
 
-# Импортируем все необходимые модели для обратной совместимости
+# Import all necessary models for backward compatibility
 from app.models.schemas import TickerRequest, SignalConfirmation, PositionClose
 
 
 def create_application() -> FastAPI:
-    """Создание и настройка экземпляра FastAPI"""
+    """Create and configure FastAPI instance"""
     app = FastAPI(
         title=settings.PROJECT_NAME,
         debug=settings.DEBUG
     )
     
-    # Настройка CORS
+    # CORS configuration
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ORIGINS,
@@ -27,105 +27,122 @@ def create_application() -> FastAPI:
         allow_headers=settings.CORS_ALLOW_HEADERS,
     )
     
-    # Подключение API роутов
+    # Connect API routes
     app.include_router(api_router, prefix=settings.API_V1_STR)
     
-    # Обработчики событий запуска и остановки
+    # Event handlers for startup and shutdown
     @app.on_event("startup")
     def startup_event():
-        """Запуск сервисов при старте приложения"""
+        """Start services when application starts"""
         monitoring_service.start()
     
     @app.on_event("shutdown")
     def shutdown_event():
-        """Остановка сервисов при завершении приложения"""
+        """Stop services when application shuts down"""
         monitoring_service.stop()
 
-    # ============ МАРШРУТЫ ОБРАТНОЙ СОВМЕСТИМОСТИ ============
-    # Эти маршруты сохраняют старые пути API для клиента,
-    # но перенаправляют запросы на новые обработчики
+    # ============ BACKWARD COMPATIBILITY ROUTES ============
+    # These routes maintain old API paths for the client,
+    # but redirect requests to new handlers
 
-    # Маршруты для тикеров
+    # Routes for tickers
     @app.post("/monitor")
     async def legacy_monitor_ticker(request: TickerRequest):
-        """Обратная совместимость для добавления тикера"""
+        """Backward compatibility for adding a ticker"""
         from app.api.routes.tickers import monitor_ticker
         return await monitor_ticker(request)
 
     @app.get("/watchlist")
     async def legacy_get_watchlist():
-        """Обратная совместимость для получения списка тикеров"""
+        """Backward compatibility for getting ticker list"""
         from app.api.routes.tickers import get_watchlist
         return await get_watchlist()
 
     @app.delete("/monitor/{ticker}")
     async def legacy_remove_ticker(ticker: str):
-        """Обратная совместимость для удаления тикера"""
+        """Backward compatibility for removing a ticker"""
         from app.api.routes.tickers import remove_ticker
         return await remove_ticker(ticker)
 
-    # Маршруты для сигналов
+    # Add new routes for models
+    @app.get("/models")
+    async def legacy_get_models():
+        """Backward compatibility for getting model list"""
+        from app.api.routes.tickers import get_available_models
+        return await get_available_models()
+
+    @app.get("/watchlist/with_models")
+    async def legacy_get_watchlist_with_models():
+        """Backward compatibility for getting ticker list with models"""
+        from app.api.routes.tickers import get_watchlist_with_models
+        return await get_watchlist_with_models()
+
+    # Routes for signals
     @app.get("/signals")
     async def legacy_get_signals():
-        """Обратная совместимость для получения сигналов"""
+        """Backward compatibility for getting signals"""
         from app.api.routes.signals import get_signals
         return await get_signals()
 
     @app.get("/signals/{ticker}")
     async def legacy_get_signals_by_ticker(ticker: str):
-        """Обратная совместимость для получения сигналов по тикеру"""
+        """Backward compatibility for getting signals by ticker"""
         from app.api.routes.signals import get_signals_by_ticker
         return await get_signals_by_ticker(ticker)
 
-    @app.post("/signals/confirm")
-    async def legacy_confirm_signal(confirmation: SignalConfirmation):
-        """Обратная совместимость для подтверждения сигнала"""
-        from app.api.routes.signals import confirm_signal
-        return await confirm_signal(confirmation)
-
     @app.get("/signals/history")
     async def legacy_get_signal_history():
-        """Обратная совместимость для получения истории сигналов"""
+        """Backward compatibility for getting signal history"""
         from app.api.routes.signals import get_signal_history
         return await get_signal_history()
 
-    # Маршруты для портфеля
-    @app.get("/balance")
+    @app.post("/signals/confirm")
+    async def legacy_confirm_signal(confirmation: SignalConfirmation):
+        """Backward compatibility for confirming signals"""
+        from app.api.routes.signals import confirm_signal
+        return await confirm_signal(confirmation)
+
+    # Routes for portfolio
+    @app.get("/portfolio/balance")
     async def legacy_get_balance():
-        """Обратная совместимость для получения баланса"""
+        """Backward compatibility for getting balance"""
         from app.api.routes.portfolio import get_balance
         return await get_balance()
 
-    @app.get("/positions")
+    @app.get("/portfolio/positions")
     async def legacy_get_positions():
-        """Обратная совместимость для получения позиций"""
+        """Backward compatibility for getting positions"""
         from app.api.routes.portfolio import get_positions
         return await get_positions()
 
-    @app.post("/positions/close/{ticker}")
-    async def legacy_close_position(ticker: str, position_close: PositionClose):
-        """Обратная совместимость для закрытия позиции"""
-        from app.api.routes.portfolio import close_position
-        return await close_position(ticker, position_close)
-
-    @app.get("/positions/history")
+    @app.get("/portfolio/positions/history")
     async def legacy_get_position_history():
-        """Обратная совместимость для получения истории позиций"""
+        """Backward compatibility for getting position history"""
         from app.api.routes.portfolio import get_position_history
         return await get_position_history()
 
+    @app.post("/portfolio/positions/close/{ticker}")
+    async def legacy_close_position(ticker: str, position_close: PositionClose):
+        """Backward compatibility for closing positions"""
+        from app.api.routes.portfolio import close_position
+        return await close_position(ticker, position_close)
+
     @app.post("/portfolio/reset")
     async def legacy_reset_portfolio():
-        """Обратная совместимость для сброса портфеля"""
+        """Backward compatibility for resetting portfolio"""
         from app.api.routes.portfolio import reset_portfolio
         return await reset_portfolio()
-    
+
     return app
 
 
 app = create_application()
 
-
 if __name__ == "__main__":
-    """Запуск сервера для разработки"""
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True) 
+    """Run the application with Uvicorn server"""
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True
+    ) 

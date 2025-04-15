@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.egg-info/
+
+# Environment
+venv/
+env/
+.env
+.venv
+env/
+ENV/
+
+# Data files
+portfolio_data.json
+*.db
+
+# Testing
+test_*.py
+.pytest_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
