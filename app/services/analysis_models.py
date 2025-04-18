@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Tuple
 import pandas as pd
 import numpy as np
 import yfinance as yf
@@ -22,6 +22,16 @@ class BaseAnalysisModel(ABC):
     @abstractmethod
     def analyze(self, ticker: str) -> Optional[Signal]:
         """Выполнить анализ тикера и вернуть сигнал, если он есть"""
+        pass
+    
+    @abstractmethod
+    def get_signal_proximity(self, ticker: str) -> Tuple[float, str]:
+        """
+        Вычисляет и возвращает процент близости к сигналу (0-100%)
+        
+        Returns:
+            Tuple[float, str]: (процент близости к сигналу, описание текущего состояния)
+        """
         pass
     
     @staticmethod
@@ -103,6 +113,61 @@ class RSIModel(BaseAnalysisModel):
         
         return rsi
     
+    def get_signal_proximity(self, ticker: str) -> Tuple[float, str]:
+        """
+        Вычисляет и возвращает процент близости к сигналу на основе RSI
+        
+        Returns:
+            Tuple[float, str]: (процент близости к сигналу, описание текущего состояния)
+        """
+        try:
+            # Get historical data
+            hist = self.get_stock_data(ticker, period="30d", interval="1d")
+            if hist is None:
+                return 0.0, "Unable to retrieve data"
+            
+            # Get earnings growth
+            earnings_growth = self.get_earnings_growth(ticker)
+            
+            # Calculate RSI
+            rsi = self.calculate_rsi(hist['Close'])
+            current_rsi = rsi.iloc[-1] if not rsi.empty and not pd.isna(rsi.iloc[-1]) else 50
+            
+            # Analyze proximity to signals
+            if current_rsi <= 30:
+                # For long signals: RSI is already in oversold territory
+                if earnings_growth > 0:
+                    return 100.0, f"Oversold (RSI={current_rsi:.1f}) - 100% buy signal"
+                else:
+                    return 70.0, f"Oversold (RSI={current_rsi:.1f}) but negative earnings growth"
+            elif current_rsi >= 70:
+                # For short signals: RSI is already in overbought territory
+                if earnings_growth < 0:
+                    return 100.0, f"Overbought (RSI={current_rsi:.1f}) - 100% sell signal"
+                else:
+                    return 70.0, f"Overbought (RSI={current_rsi:.1f}) but positive earnings growth"
+            elif 30 < current_rsi < 40:
+                # Approaching oversold territory
+                proximity = 100 - ((current_rsi - 30) / 10 * 100)
+                return proximity, f"Approaching oversold (RSI={current_rsi:.1f}) - {proximity:.0f}% close to buy signal"
+            elif 60 < current_rsi < 70:
+                # Approaching overbought territory
+                proximity = 100 - ((70 - current_rsi) / 10 * 100)
+                return proximity, f"Approaching overbought (RSI={current_rsi:.1f}) - {proximity:.0f}% close to sell signal"
+            else:
+                # In neutral territory
+                if current_rsi < 50:
+                    # Closer to oversold
+                    proximity = (50 - current_rsi) / 20 * 50  # 0% at RSI=50, 50% at RSI=30
+                    return proximity, f"Neutral with bearish tendency (RSI={current_rsi:.1f}) - {proximity:.0f}% close to signal"
+                else:
+                    # Closer to overbought
+                    proximity = (current_rsi - 50) / 20 * 50  # 0% at RSI=50, 50% at RSI=70
+                    return proximity, f"Neutral with bullish tendency (RSI={current_rsi:.1f}) - {proximity:.0f}% close to signal"
+        except Exception as e:
+            print(f"Error calculating RSI signal proximity for {ticker}: {e}")
+            return 0.0, "Error calculating proximity"
+            
     def analyze(self, ticker: str) -> Optional[Signal]:
         """Analysis of ticker using RSI and fundamental indicators"""
         try:
@@ -207,6 +272,86 @@ class MACDModel(BaseAnalysisModel):
         histogram = macd_line - signal_line
         
         return macd_line, signal_line, histogram
+    
+    def get_signal_proximity(self, ticker: str) -> Tuple[float, str]:
+        """
+        Вычисляет и возвращает процент близости к сигналу на основе MACD
+        
+        Returns:
+            Tuple[float, str]: (процент близости к сигналу, описание текущего состояния)
+        """
+        try:
+            # Get historical data
+            hist = self.get_stock_data(ticker, period="60d", interval="1d")
+            if hist is None:
+                return 0.0, "Unable to retrieve data"
+            
+            # Get earnings growth
+            earnings_growth = self.get_earnings_growth(ticker)
+            
+            # Calculate MACD
+            macd_line, signal_line, histogram = self.calculate_macd(hist['Close'])
+            
+            # Get current and previous values
+            current_macd = macd_line.iloc[-1]
+            prev_macd = macd_line.iloc[-2]
+            current_signal = signal_line.iloc[-1]
+            prev_signal = signal_line.iloc[-2]
+            current_hist = histogram.iloc[-1]
+            prev_hist = histogram.iloc[-2]
+            
+            # Calculate distance between MACD line and signal line
+            distance = abs(current_macd - current_signal)
+            avg_distance = abs(macd_line - signal_line).mean()  # Average distance for scaling
+            
+            # Calculate proximity based on different patterns
+            
+            # For bullish crossover (MACD line crossing above signal line)
+            if current_macd < current_signal and current_macd > prev_macd:
+                # How close MACD is to crossing the signal line
+                cross_proximity = 100 * (1 - min(1, (current_signal - current_macd) / avg_distance))
+                if earnings_growth > 0:
+                    return cross_proximity, f"Approaching bullish crossover ({cross_proximity:.0f}% close to buy signal)"
+                else:
+                    return cross_proximity * 0.7, f"Approaching bullish crossover but negative earnings"
+            
+            # For bearish crossover (MACD line crossing below signal line)
+            elif current_macd > current_signal and current_macd < prev_macd:
+                # How close MACD is to crossing the signal line
+                cross_proximity = 100 * (1 - min(1, (current_macd - current_signal) / avg_distance))
+                if earnings_growth < 0:
+                    return cross_proximity, f"Approaching bearish crossover ({cross_proximity:.0f}% close to sell signal)"
+                else:
+                    return cross_proximity * 0.7, f"Approaching bearish crossover but positive earnings"
+            
+            # For bullish trend (MACD line above signal line)
+            elif current_macd > current_signal:
+                if current_macd > prev_macd and current_signal > prev_signal:
+                    # Strengthening bullish trend
+                    return 80.0, "Strong bullish trend - potential buy signal"
+                elif current_macd < prev_macd and current_signal < prev_signal:
+                    # Weakening bullish trend
+                    return 30.0, "Weakening bullish trend"
+                else:
+                    return 50.0, "Bullish trend"
+            
+            # For bearish trend (MACD line below signal line)
+            elif current_macd < current_signal:
+                if current_macd < prev_macd and current_signal < prev_signal:
+                    # Strengthening bearish trend
+                    return 80.0, "Strong bearish trend - potential sell signal"
+                elif current_macd > prev_macd and current_signal > prev_signal:
+                    # Weakening bearish trend
+                    return 30.0, "Weakening bearish trend"
+                else:
+                    return 50.0, "Bearish trend"
+            
+            # Default case
+            return 0.0, "Neutral trend"
+            
+        except Exception as e:
+            print(f"Error calculating MACD signal proximity for {ticker}: {e}")
+            return 0.0, "Error calculating proximity"
     
     def analyze(self, ticker: str) -> Optional[Signal]:
         """Analysis of ticker using MACD and fundamental indicators"""
@@ -335,6 +480,65 @@ class BollingerBandsModel(BaseAnalysisModel):
         lower_band = middle_band - (std * num_std)
         
         return upper_band, middle_band, lower_band
+    
+    def get_signal_proximity(self, ticker: str) -> Tuple[float, str]:
+        """
+        Вычисляет и возвращает процент близости к сигналу на основе Bollinger Bands
+        
+        Returns:
+            Tuple[float, str]: (процент близости к сигналу, описание текущего состояния)
+        """
+        try:
+            # Get historical data
+            hist = self.get_stock_data(ticker, period="60d", interval="1d")
+            if hist is None:
+                return 0.0, "Unable to retrieve data"
+            
+            # Get earnings growth
+            earnings_growth = self.get_earnings_growth(ticker)
+            
+            # Calculate Bollinger Bands
+            upper_band, middle_band, lower_band = self.calculate_bollinger_bands(hist['Close'])
+            
+            # Get current and previous values
+            current_price = hist['Close'].iloc[-1]
+            current_upper = upper_band.iloc[-1]
+            current_middle = middle_band.iloc[-1]
+            current_lower = lower_band.iloc[-1]
+            
+            # Calculate band width (volatility)
+            band_width = (current_upper - current_lower) / current_middle
+            
+            # Calculate normalized position within the bands (0 = lower band, 1 = upper band)
+            position_in_band = (current_price - current_lower) / (current_upper - current_lower)
+            
+            # Proximity calculation based on position within bands and band width
+            if position_in_band <= 0.1:  # Very close to lower band
+                if earnings_growth > 0:
+                    return 95.0, f"Price near lower Bollinger Band ({position_in_band*100:.0f}%) - strong buy signal potential"
+                else:
+                    return 70.0, f"Price near lower Bollinger Band but negative earnings growth"
+            elif position_in_band >= 0.9:  # Very close to upper band
+                if earnings_growth < 0:
+                    return 95.0, f"Price near upper Bollinger Band ({(1-position_in_band)*100:.0f}%) - strong sell signal potential"
+                else:
+                    return 70.0, f"Price near upper Bollinger Band but positive earnings growth"
+            elif position_in_band < 0.3:  # Approaching lower band
+                proximity = 100 - (position_in_band / 0.3 * 70)  # 100% at lower band, 30% at 30% of the band
+                return proximity, f"Approaching lower Bollinger Band - {proximity:.0f}% close to buy signal"
+            elif position_in_band > 0.7:  # Approaching upper band
+                proximity = 100 - ((1 - position_in_band) / 0.3 * 70)  # 100% at upper band, 30% at 70% of the band
+                return proximity, f"Approaching upper Bollinger Band - {proximity:.0f}% close to sell signal"
+            elif band_width < 0.05:  # Very narrow bands - potential breakout
+                return 80.0, f"Low volatility ({band_width:.2f}) - potential breakout signal approaching"
+            else:
+                # In the middle of the bands - calculate how close to middle (50% at middle, 0% half way to either band)
+                middle_proximity = (1 - abs(0.5 - position_in_band) * 4) * 50
+                return middle_proximity, f"Price in neutral territory - {middle_proximity:.0f}% signal strength"
+                
+        except Exception as e:
+            print(f"Error calculating Bollinger Bands signal proximity for {ticker}: {e}")
+            return 0.0, "Error calculating proximity"
     
     def analyze(self, ticker: str) -> Optional[Signal]:
         """Analysis of ticker using Bollinger Bands and fundamental indicators"""

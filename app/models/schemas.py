@@ -103,4 +103,29 @@ class WatchlistItem(BaseModel):
 
     @classmethod
     def from_dict(cls, data: dict) -> "WatchlistItem":
-        return cls(**data) 
+        return cls(**data)
+
+
+class SignalProximity(BaseModel):
+    """Information about how close a ticker is to generating a signal"""
+    ticker: str
+    model_type: AnalysisModelType
+    proximity: float  # 0-100% proximity to generating a signal
+    description: str  # Text explanation of the current state
+    updated_at: str  # Timestamp of when this information was generated
+
+    def to_dict(self) -> dict:
+        return self.dict()
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "SignalProximity":
+        return cls(**data)
+
+
+class WatchlistItemDetails(BaseModel):
+    """Detailed watchlist item including signal proximity information"""
+    ticker: str
+    model_type: AnalysisModelType
+    proximity: float  # 0-100% proximity to generating a signal
+    description: str  # Text explanation of the current state
+    updated_at: str  # Timestamp of when this information was generated 
