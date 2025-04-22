@@ -21,7 +21,7 @@ class Settings(BaseModel):
     RETRY_DELAY: int = 2  # Seconds
     
     # Portfolio settings
-    INITIAL_BALANCE: float = 1000.0
+    INITIAL_BALANCE: float = 175000.0
     PORTFOLIO_DATA_FILE: str = "portfolio_data.json"
     
     # Environment settings
