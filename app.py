@@ -8,7 +8,7 @@ import time
 import uvicorn
 from datetime import datetime
 
-app = FastAPI()
+app = FastAPI(title="Trading Signal API")
 
 # Разрешаем доступ с Flutter клиента (можно уточнить конкретный IP)
 app.add_middleware(
@@ -444,6 +444,14 @@ def reset_portfolio():
 
 # 🔄 Старт фонового потока мониторинга
 threading.Thread(target=monitoring_loop, daemon=True).start()
+
+@app.get("/")
+def root():
+    return {"message": "Trading Signal API is running"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
 
 # Запуск сервера (если напрямую)
 if __name__ == '__main__':
