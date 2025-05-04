@@ -104,7 +104,7 @@ class AbstractRepository(ABC):
 class InMemoryRepository(AbstractRepository):
     """In-memory repository implementation"""
     
-    def __init__(self, initial_balance: float = 1000.0):
+    def __init__(self, initial_balance: float = 5000.0):
         # Instead of a simple set of tickers, we use a dictionary {ticker: model_type}
         self._watchlist: Dict[str, AnalysisModelType] = {}
         self._signals_by_ticker: Dict[str, List[Dict[str, Any]]] = {}

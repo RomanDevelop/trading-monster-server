@@ -52,7 +52,7 @@ active_signals = []
 signal_history = []
 
 # Новые переменные для управления портфелем
-user_balance = 1000.0  # Начальный баланс пользователя
+user_balance = 5000.0  # Начальный баланс пользователя
 open_positions = {}    # Словарь открытых позиций: {ticker: position_data}
 position_history = []  # История всех позиций (открытых и закрытых)
 
