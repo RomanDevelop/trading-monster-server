@@ -8,8 +8,18 @@ import time
 import uvicorn
 from datetime import datetime
 from app.core.config import settings
+import logging
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.PROJECT_NAME)
+
+# Логируем информацию о запуске
+logger.info(f"Starting {settings.PROJECT_NAME}")
+logger.info(f"API prefix: {settings.API_V1_STR}")
+logger.info(f"CORS origins: {settings.CORS_ORIGINS}")
 
 # Разрешаем доступ с Flutter клиента
 app.add_middleware(
@@ -453,3 +463,12 @@ if __name__ == '__main__':
 @app.get("/")
 def root():
     return {"message": "Trading Signal API is running", "version": "1.0"}
+
+@app.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "version": "1.0",
+        "api_prefix": settings.API_V1_STR,
+        "project_name": settings.PROJECT_NAME
+    }
