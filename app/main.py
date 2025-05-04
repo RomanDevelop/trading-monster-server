@@ -449,3 +449,7 @@ threading.Thread(target=monitoring_loop, daemon=True).start()
 # Запуск сервера (если напрямую)
 if __name__ == '__main__':
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+
+@app.get("/")
+def root():
+    return {"message": "Trading Signal API is running", "version": "1.0"}
