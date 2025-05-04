@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
 import yfinance as yf
@@ -29,6 +30,14 @@ app.add_middleware(
     allow_methods=settings.CORS_ALLOW_METHODS,
     allow_headers=settings.CORS_ALLOW_HEADERS,
 )
+
+# Middleware для логирования запросов
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Request: {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"Response status: {response.status_code}")
+    return response
 
 # Тикеры, которые надо мониторить
 watchlist = set()
@@ -462,13 +471,8 @@ if __name__ == '__main__':
 
 @app.get("/")
 def root():
-    return {"message": "Trading Signal API is running", "version": "1.0"}
+    return {"message": "Trading Signal API is running"}
 
 @app.get("/health")
 def health_check():
-    return {
-        "status": "healthy",
-        "version": "1.0",
-        "api_prefix": settings.API_V1_STR,
-        "project_name": settings.PROJECT_NAME
-    }
+    return {"status": "healthy"}
